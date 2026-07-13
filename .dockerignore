@@ -1,0 +1,35 @@
+# Keep the build context (and resulting images) small and secret-free.
+.git
+.gitignore
+.gitattributes
+.github
+.gitlab-ci.yml
+
+# Dependencies are installed inside the image.
+vendor
+node_modules
+
+# Local environment & secrets — never bake into an image.
+.env
+.env.*
+!.env.example
+
+# Docs, editor & CI files not needed at runtime.
+docs
+README.md
+CONTRIBUTING.md
+LICENSE
+Makefile
+.editorconfig
+.styleci.yml
+.vscode
+.idea
+
+# Build artifacts & caches.
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+public/hot
+public/storage
+.phpunit.result.cache

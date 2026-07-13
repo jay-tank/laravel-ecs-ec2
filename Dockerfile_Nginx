@@ -1,0 +1,11 @@
+# Nginx reverse-proxy image. Serves static assets and proxies PHP
+# requests over FastCGI to the PHP-FPM app container.
+FROM nginx:1.25-alpine
+
+# Server block (includes the /health endpoint and the FastCGI pass).
+COPY ./config/nginx/conf.d/app.conf /etc/nginx/conf.d/default.conf
+
+# Application source — Nginx serves static files from /var/www/public.
+COPY . /var/www
+
+EXPOSE 80

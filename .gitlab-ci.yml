@@ -1,0 +1,46 @@
+# CI/CD: build both images, push to Amazon ECR, and roll the ECS service.
+# Configure the required variables under Settings > CI/CD > Variables.
+# See docs/DEPLOYMENT.md for the full list.
+
+stages:
+  - build
+  - deploy
+
+variables:
+  APP_IMAGE: "$ECR_REPOSITORY_APP_IMAGE"
+  NGINX_IMAGE: "$ECR_REPOSITORY_NGINX_IMAGE"
+
+# ---------------------------------------------------------------------------
+# Build & push images to ECR
+# ---------------------------------------------------------------------------
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - apk add --no-cache python3 py3-pip && pip3 install --no-cache-dir awscli
+    - aws ecr get-login-password --region "$AWS_DEFAULT_REGION"
+        | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+  script:
+    - docker build -f Dockerfile       -t "$APP_IMAGE:$CI_COMMIT_SHORT_SHA"   -t "$APP_IMAGE:latest"   .
+    - docker build -f Dockerfile_Nginx -t "$NGINX_IMAGE:$CI_COMMIT_SHORT_SHA" -t "$NGINX_IMAGE:latest" .
+    - docker push "$APP_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$APP_IMAGE:latest"
+    - docker push "$NGINX_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$NGINX_IMAGE:latest"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ---------------------------------------------------------------------------
+# Deploy: register a new task revision and roll the service (zero downtime)
+# ---------------------------------------------------------------------------
+deploy:
+  stage: deploy
+  image: python:3.12-alpine
+  before_script:
+    - pip install --no-cache-dir ecs-deploy
+  script:
+    - ecs deploy "$ECS_CLUSTER" "$ECS_SERVICE" --timeout 1200
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
